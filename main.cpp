@@ -40,38 +40,57 @@ public:
 
         // Determine which reaction occurs
         double threshold = r2_rand * total_rate;
-        std::cout << total_rate << " " << r1 << " " << r2 << " " << r3 << " " << r4 << " " << r5 << " " << J_s << std::endl;
-        if ((0. <= threshold) && (threshold < r1)) { // r -> r - 1
+        if (threshold < r1) { // r -> r - 1
             r--;
-        } if ((r1 <= threshold) && (threshold < r1 + r2)) { // r -> r - 1 & s -> s - 1
+        } else if (threshold < r1 + r2) { // r -> r - 1 & s -> s - 1
             r--;
             s--;
-        } if ((r1 + r2 <= threshold) && (threshold < r1 + r2 + r3)) { // r -> r + a & s -> s + b & c -> c - b
+        } else if (threshold < r1 + r2 + r3) { // r -> r + a & s -> s + b & c -> c - b
             r += a;
             s += b;
             c -= b;
-        } if ((r1 + r2 + r3 <= threshold) && (threshold < r1 + r2 + r3 + r4)) { // r -> r - a & s -> s - b & c -> c + b
+        } else if (threshold < r1 + r2 + r3 + r4) { // r -> r - a & s -> s - b & c -> c + b
             r -= a;
             s -= b;
             c += b;
-        } if ((r1 + r2 + r3 + r4 <= threshold) && (threshold < r1 + r2 + r3 + r4 + r5)) { // s -> s - 1
+        } else if (threshold < r1 + r2 + r3 + r4 + r5) { // s -> s - 1
             s--;
-        }  if ((r1 + r2 + r3 + r4 + r5 <= threshold) && (threshold < r1 + r2 + r3 + r4 + r5 + J_r)) { // r -> r + 1
+        } else if (threshold < r1 + r2 + r3 + r4 + r5 + J_r) { // r -> r + 1
             r++;
-        } if ((r1 + r2 + r3 + r4 + r5 + J_r <= threshold) && (threshold < r1 + r2 + r3 + r4 + r5 + J_r + J_rs)) { // r -> r + 1 & s -> s + 1
+        } else if (threshold < r1 + r2 + r3 + r4 + r5 + J_r + J_rs) { // r -> r + 1 & s -> s + 1
             r++;
             s++;
-        } if ((r1 + r2 + r3 + r4 + r5 + J_r + J_rs <= threshold) && (threshold < total_rate)){ // s -> s + 1
+        } else { // s -> s + 1
             s++;
         }
     }
 
     // Run simulation for a specified amount of time
-    void run(double end_time) {
+    void run(double end_time, double dt) {
+        double discretized_time = 5., s_prev, r_prev, c_prev, time_prev;
+        int n=0;
         while (time < end_time) {
+            s_prev = s; r_prev = r; c_prev = c; time_prev = time;
             step();
-            printState();
-            savestring();
+            
+            if((discretized_time <= time) && (time < dt + discretized_time) && (time_prev < discretized_time)){
+                savestring(s_prev, r_prev, c_prev, discretized_time);
+                discretized_time += dt;
+                n++;
+            }
+            else if((time >= discretized_time + dt) && (discretized_time <= time) && (time_prev < discretized_time)){
+                int m = int((time - discretized_time)/dt);
+                std::cout << time << " "<< m<< std::endl;
+                while((time >= discretized_time) && (discretized_time < end_time)){
+                    savestring(s_prev, r_prev, c_prev, discretized_time);
+                    discretized_time += dt;
+                    n++;
+                }
+            }
+        }
+        std::cout<<n;
+        if(n != 1001){
+            abort();
         }
     }
 
@@ -97,11 +116,11 @@ private:
     std::mt19937 gen;
     std::string string_r = "", string_s = "", string_c = "", string_time = "";
 
-    void savestring(){
-        string_r += std::to_string(r) + " ";
-        string_s += std::to_string(s) + " ";
-        string_c += std::to_string(c) + " ";
-        string_time += std::to_string(time) + " ";
+    void savestring(double s_prev, double r_prev, double c_prev, double time_prev){
+        string_r += std::to_string(r_prev) + " ";
+        string_s += std::to_string(s_prev) + " ";
+        string_c += std::to_string(c_prev) + " ";
+        string_time += std::to_string(time_prev) + " ";
     }
 
 
@@ -112,9 +131,9 @@ private:
 };
 
 int main() {
-    int N_sim = 1;
+    int N_sim = 100000;
     // Initial populations of r, s, c
-    double s_eq = 1000.;
+    double s_eq = 100., dt = 0.01;
     int r_init = 100;
     int s_init = 100;
     int c_init = 0;
@@ -134,10 +153,10 @@ int main() {
     double r_star = (J_on + G_on) / (j_off + g_off), s_star = (K_on + G_on -g_off*r_star) / k_off, c_star = k_b/k_u * r_star * s_star;
 
 
-    std::ofstream file_r("..\\Python\\r.txt");
-    std::ofstream file_s("..\\Python\\s.txt");
-    std::ofstream file_c("..\\Python\\c.txt");
-    std::ofstream file_time("..\\Python\\time.txt");
+    std::ofstream file_r("./r.txt");
+    std::ofstream file_s("./s.txt");
+    std::ofstream file_c("./c.txt");
+    std::ofstream file_time("./time.txt");
 
     for(size_t k=0; k<N_sim; k++){
 
@@ -145,18 +164,23 @@ int main() {
         GillespieSimulator simulator(s_eq, r_init, s_init, c_init, J_on, j_off, G_on, g_off, K_on, k_off, k_u, k_b, a, b);
 
         // Run simulation for 100 units of time
-        simulator.run(10.0);
+        simulator.run(15.0, dt);
 
         // Save to file
         file_r << simulator.receptors() << std::endl;
         file_s << simulator.scaffolds() << std::endl;
         file_c << simulator.complex() << std::endl;
         file_time << simulator.time_str() << std::endl;
+        std::cout << k << std::endl;
     }
 
     file_time.close(); file_r.close(); file_s.close(); file_c.close();
 
-    std::cout << "R equilibrium: " << r_star * s_eq << " " << s_star * s_eq << " " << c_star * s_eq;
+
+    std::cout << "R equilibrium: " << r_star * s_eq << " " << s_star * s_eq << " " << c_star * s_eq << std::endl;
+    std::cout  << (alpha * k_b * s_star + j_off + g_off - k_u)/2. - std::sqrt((alpha * k_b * s_star + j_off + g_off - k_u) 
+    * (alpha * k_b * s_star + j_off + g_off - k_u)/4. + alpha *k_u * k_b * s_star) << " " << (alpha * k_b * s_star + j_off + g_off - k_u)/2. + std::sqrt((alpha * k_b * s_star + j_off + g_off - k_u) 
+    * (alpha * k_b * s_star + j_off + g_off - k_u)/4. + alpha *k_u * k_b * s_star);
 
     return 0;
 }

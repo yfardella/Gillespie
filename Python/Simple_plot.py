@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-data_r = np.loadtxt('.\\c.txt')
-data_time = np.loadtxt('.\\time.txt')
+data_r = np.loadtxt('./r.txt')
+data_time = np.loadtxt('./time.txt')
 
 plt.grid(True)
 plt.plot(data_time, data_r)

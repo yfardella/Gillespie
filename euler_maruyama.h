@@ -2,87 +2,86 @@
 #include <vector>
 #include <cmath>
 #include <functional>
+#include <random>
 
 class EulerMaruyama {
 private:
-    double dt;  // Time step
-    double t;   // Current time
-    std::vector<double> state; // {x1, x2, x3}
+    private:
+    int r, s, c, a, b;  // Populations of species A, B, and C
+    double j_off, g_off, k_off, k_u, k_b, alpha;  // Reaction rate constants
+    double time, dt;  // Current simulation time
+    double J_r, J_rs, J_s;
+    std::random_device rd;
+    std::mt19937 gen;
+    std::string string_r = "", string_s = "", string_c = "", string_time = "";
+
+    void savestring(double s_prev, double r_prev, double c_prev, double time_prev){
+        string_r += std::to_string(r_prev) + " ";
+        string_s += std::to_string(s_prev) + " ";
+        string_c += std::to_string(c_prev) + " ";
+        string_time += std::to_string(time_prev) + " ";
+    }
+
+
+    // Print current state of the system
+    void printState() const {
+        std::cout << "Time: " << time << " | R: " << r << " | S: " << s << " | C: " << c << std::endl;
+    }
+
+    std::vector<double> rd_vector(int size){
+        std::vector<double> rd_vec(size,0.);
+        std::normal_distribution dis{0., 1.0};
+        
+        for(int k=0; k < size; k++){
+            rd_vec[k] = dis(gen);
+        }
+        return rd_vec;
+    }
 
 public:
     // Constructor initializes the time step, start time, and initial conditions
-    EulerMaruyama(double dt, double t0, const std::vector<double>& initialState)
-        : dt(dt), t(t0), state(initialState) {}
+    EulerMaruyama(double s_eq, int r_init, int s_init, int c_init, double J_on, double j_off, double G_on,
+                       double g_off, double K_on, double k_off, double k_u, double k_b, int a, int b)
+        : r(r_init), s(s_init), c(c_init), J_r(J_on * s_eq), j_off(j_off), J_rs(G_on * s_eq), g_off(g_off),
+        J_s(K_on * s_eq), k_off(k_off), k_u(k_u), k_b(k_b / s_eq), a(a), b(b), alpha(double(a)/double(b)), time(0.0) {
+        gen.seed(rd());
+    }
+
 
     // Function to advance one step using Euler-Maruyama method
-    void step(std::function<double(double, double, double)> f1,
-              std::function<double(double, double, double)> f2,
-              std::function<double(double, double, double)> f3) {
-        
-        double x1 = state[0];
-        double x2 = state[1];
-        double x3 = state[2];
-
+    void step() {
+        // Sampling noise from the normal distribution
+        std::normal_distribution noise{0., std::sqrt(dt)};
+        double r_prev = r, s_prev = s, c_prev = c;
         // Update based on the ODE functions
-        state[0] += f1(x1, x2, x3) * dt;  // Euler update for r
-        state[1] += f2(x1, x2, x3) * dt;  // Euler update for s
-        state[2] += f3(x1, x2, x3) * dt;  // Euler update for c
+        r += (J_r + J_rs + k_u * c - j_off * r - g_off * r - alpha * (k_b * r * s)) * dt + noise(gen);  // Euler update for r
+        s += (J_rs + J_s + k_u * c - g_off * r - k_off * s - (k_b * r * s)) * dt + noise(gen);  // Euler update for s
+        c += ((k_b * r * s) - k_u * c) * dt;  // Euler update for c
 
         // Increment time
-        t += dt;
-    }
-
-    // Function to get the current state
-    std::vector<double> getState() const {
-        return state;
-    }
-
-    // Function to get the current time
-    double getTime() const {
-        return t;
+        time += dt;
     }
 
     // Run the solver for a number of steps
-    void run(int steps,
-             std::function<double(double, double, double)> f1,
-             std::function<double(double, double, double)> f2,
-             std::function<double(double, double, double)> f3) {
-        
-        for (int i = 0; i < steps; ++i) {
-            step(f1, f2, f3);
+    void run(double end_time, double dt) {
+        savestring(s, r, c, time);
+        while (time < end_time) {
+            step();
+            savestring(s, r, c, time);
+            printState();
         }
     }
+
+    std::string receptors(){
+        return string_r;
+    }
+    std::string scaffolds(){
+        return string_s;
+    }
+    std::string complex(){
+        return string_c;
+    }
+    std::string time_str(){
+        return string_time;
+    }
 };
-
-// Example usage
-int main() {
-    // Initial conditions x1, x2, x3 at time t0 = 0
-    std::vector<double> initialState = {1.0, 0.0, 0.0};
-    double dt = 0.01;  // Time step
-    double t0 = 0.0;   // Initial time
-
-    EulerMaruyama solver(dt, t0, initialState);
-
-    // Define the coupled ODEs
-    auto f1 = [](double x1, double x2, double x3) {
-        return -x1 + x2 * x3;  // Example ODE for r
-    };
-    auto f2 = [](double x1, double x2, double x3) {
-        return -x2 + x1 * x3;  // Example ODE for s
-    };
-    auto f3 = [](double x1, double x2, double x3) {
-        return -x3 + x1 * x2;  // Example ODE for c
-    };
-
-    // Run the solver for 1000 steps
-    solver.run(1000, f1, f2, f3);
-
-    // Output the final state
-    std::vector<double> finalState = solver.getState();
-    std::cout << "Final state after 1000 steps:\n";
-    std::cout << "x1 = " << finalState[0] << "\n";
-    std::cout << "x2 = " << finalState[1] << "\n";
-    std::cout << "x3 = " << finalState[2] << "\n";
-
-    return 0;
-}

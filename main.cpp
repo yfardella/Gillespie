@@ -68,7 +68,7 @@ public:
 
     // Run simulation for a specified amount of time
     void run(double end_time, double dt) {
-        double discretized_time = 5., s_prev, r_prev, c_prev, time_prev;
+        double discretized_time = 5., s_prev = s, r_prev = r, c_prev = c, time_prev = time;
         int n=0;
         while (time < end_time) {
             s_prev = s; r_prev = r; c_prev = c; time_prev = time;
@@ -88,6 +88,9 @@ public:
                     n++;
                 }
             }
+            // if(discretized_time <0.1){
+            //     std::cout<<n << " "<< discretized_time << " "<< time<< std::endl;
+            // }
         }
         std::cout<<n;
         if(n != 1001){
@@ -135,8 +138,8 @@ int main() {
     int N_sim = 10000;
     // Initial populations of r, s, c
     double s_eq = 50., dt = 0.01;
-    int r_init = 100;
-    int s_init = 100;
+    int r_init = 50;
+    int s_init = 50;
     int c_init = 0;
 
     // Reaction rate constants

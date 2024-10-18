@@ -5,6 +5,7 @@
 #include <fstream>
 
 
+
 class GillespieSimulator {
 public:
     GillespieSimulator(double s_eq, int r_init, int s_init, int c_init, double J_on, double j_off, double G_on,
@@ -131,9 +132,9 @@ private:
 };
 
 int main() {
-    int N_sim = 100000;
+    int N_sim = 10000;
     // Initial populations of r, s, c
-    double s_eq = 100., dt = 0.01;
+    double s_eq = 50., dt = 0.01;
     int r_init = 100;
     int s_init = 100;
     int c_init = 0;
